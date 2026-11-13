@@ -149,7 +149,9 @@ fn manifest(dir: &std::path::Path, manifest: &std::path::Path, wasm: bool) -> Re
         if is_excluded_family(family) {
             continue;
         }
-        if wasm && !matches!((*family, *style), ("BIZ UDPGothic", "Regular") | ("Inter", "Regular" | "Bold" | "Variable")) {
+        // AX Korean web build: NanumGothic Regular (2 MB, OFL) joins the web set so the Korean
+        // interface (i18n/ko.tsv) draws Hangul; theme.rs already lists it among the interface faces.
+        if wasm && !matches!((*family, *style), ("BIZ UDPGothic", "Regular") | ("Inter", "Regular" | "Bold" | "Variable") | ("NanumGothic", "Regular")) {
             continue;
         }
         let path = dir.join(file).canonicalize().map_err(|e| format!("{file}: {e}"))?;
