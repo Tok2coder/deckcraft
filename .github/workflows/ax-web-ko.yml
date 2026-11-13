@@ -1,0 +1,104 @@
+# AX Korean web build (Wikicomu ax-deck host). Builds the browser version of this fork with the
+# Korean interface and NanumGothic, from a pinned toolchain, and attests the artifact's provenance.
+#
+# Security conditions (Wikicomu security review C5'): manual start only, read-only token plus
+# attestation scopes, every external action pinned to a commit SHA, no secrets, no caches, and
+# paths remapped so a second build elsewhere (WSL2) can be compared byte for byte.
+name: AX Korean web build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-web-ko
+  cancel-in-progress: false
+
+jobs:
+  web:
+    name: Web (wasm, Korean)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+      CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+      CRAFT_FONTS_REQUIRED: "1"
+      # Reproducible paths: the workspace, cargo home and rustup home are remapped to fixed names.
+      RUSTFLAGS: "--remap-path-prefix=${{ github.workspace }}=/build --remap-path-prefix=/home/runner/.cargo=/cargo --remap-path-prefix=/home/runner/.rustup=/rustup"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check out craft-fonts (pinned)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: storytold/craft-fonts
+          ref: 37827adc41fd165f9a9234ac40f94dbad353aa69
+          path: craft-fonts
+          persist-credentials: false
+      - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
+        with:
+          toolchain: 1.100.0
+          targets: wasm32-unknown-unknown
+      - name: Install trunk (SHA256-verified)
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="0.21.14"
+          expected="f2b4680cd239693a646a2795e4633c625328d7b2a044fbe749fa3a2fe9e7036b"
+          tar_url="https://github.com/trunk-rs/trunk/releases/download/v${version}/trunk-x86_64-unknown-linux-gnu.tar.gz"
+          curl --proto '=https' --proto-redir =https -fsSL -o "$RUNNER_TEMP/trunk.tar.gz" "$tar_url"
+          echo "$expected  $RUNNER_TEMP/trunk.tar.gz" | sha256sum -c -
+          tar -xz -C "$HOME/.cargo/bin" -f "$RUNNER_TEMP/trunk.tar.gz" trunk
+          trunk --version
+      - name: Tool versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "rustc=$(rustc -Vv | tr '\n' ' ')"
+            echo "cargo=$(cargo -V)"
+            echo "trunk=$(trunk --version)"
+            echo "wasm-bindgen(lock)=$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | grep version | head -1)"
+            echo "craft-fonts=37827adc41fd165f9a9234ac40f94dbad353aa69"
+          } | tee versions.txt
+      - name: Interface language tests (native, font-free)
+        run: cargo test --locked -p deckcraft-ui-egui i18n::
+      - name: Build and zip
+        run: packaging/web/package.sh
+      - name: Hashes and dependency tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp dist/release/*.zip out/
+          (cd out && unzip -q ./*.zip)
+          (cd out && find . -type f ! -name '*.zip' -print0 | sort -z | xargs -0 sha256sum) | tee out/SHA256SUMS.txt
+          cargo tree --locked -p deckcraft-web --target wasm32-unknown-unknown --edges normal,build > out/cargo-tree.txt
+          cp versions.txt out/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ax-web-ko-${{ github.sha }}
+          path: |
+            out/*.zip
+            out/SHA256SUMS.txt
+            out/versions.txt
+            out/cargo-tree.txt
+          if-no-files-found: error
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: out/*.zip

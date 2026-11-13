@@ -1,0 +1,7 @@
+# AX Korean web build: the toolchain is pinned so two builds in different environments
+# (GitHub Actions and a local WSL2 checkout) produce the same wasm. Upstream builds with
+# "stable", which was 1.100.0 on 2026-11-13.
+[toolchain]
+channel = "1.100.0"
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"
