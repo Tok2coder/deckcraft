@@ -76,7 +76,7 @@ jobs:
             echo "craft-fonts=37827adc41fd165f9a9234ac40f94dbad353aa69"
           } | tee versions.txt
       - name: Interface language tests (native, font-free)
-        run: cargo test --locked -p deckcraft-ui-egui i18n::
+        run: "cargo test --locked -p deckcraft-ui-egui i18n::"
       - name: Build and zip
         run: packaging/web/package.sh
       - name: Hashes and dependency tree
