@@ -80,6 +80,7 @@ impl SlideApp {
             canvas_region: None,
             palette: None,
             integrated_titlebar: false,
+            hide_title_bar: false,
             backstage: None,
             pending_urls: vec![],
             print_previews: files::PrintPreviews::default(),
@@ -317,7 +318,9 @@ impl SlideApp {
         self.sync_backstage();
         self.keyboard(&ctx);
         self.sync_backstage();
-        ribbon::title_bar(self, ui);
+        if !self.hide_title_bar {
+            ribbon::title_bar(self, ui);
+        }
         if self.backstage.is_none() && self.session.active().is_some() {
             ribbon::show(self, ui);
             status::status_bar(self, ui);

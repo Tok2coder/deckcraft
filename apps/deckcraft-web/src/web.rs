@@ -59,6 +59,11 @@ pub fn start() {
                         bridge.connect(&mut services, cc.egui_ctx.clone());
                     }
                     let mut app = SlideApp::new(Session::new(), services);
+                    // `?chrome=none` (the AX panel): the framing page owns the window, saving and
+                    // the title, so the title bar is not drawn (its controls move to the tab strip).
+                    if query_param("chrome").as_deref() == Some("none") {
+                        app.hide_title_bar = true;
+                    }
                     // In host mode the parent sends the presentation to edit; no sample meanwhile.
                     if app_bridge.is_some() {
                         if let Err(e) = app.start_for_host() {

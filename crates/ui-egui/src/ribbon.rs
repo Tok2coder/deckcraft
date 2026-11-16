@@ -179,6 +179,37 @@ pub fn show(app: &mut SlideApp, ui: &mut Ui) {
             }
             x += w + 2.0;
         }
+        // No title bar (`hide_title_bar`, the AX panel): its surviving controls sit at the right
+        // end of the tab strip, right to left — comments, light/dark, redo, undo.
+        if app.hide_title_bar {
+            let has_doc = app.session.active().is_some();
+            let mut right = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(Rect::from_min_max(pos2((x + 8.0).max(rect.max.x - 150.0), y), pos2(rect.max.x - 10.0, y + 24.0)))
+                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
+            );
+            right.spacing_mut().item_spacing.x = 4.0;
+            if icon_toggle(&mut right, Icon::CommentsBubble, tr("Comments"), has_doc, app.ui.pane.as_deref() == Some("comments")).clicked() {
+                let _ = app.run("view.pane", json!({"pane": "comments", "toggle": true}));
+            }
+            if icon_toggle(
+                &mut right,
+                if app.ui.brightness == theme::Brightness::Dark { Icon::Sparkle } else { Icon::Palette },
+                tr("Light/Dark appearance"),
+                true,
+                false,
+            )
+            .clicked()
+            {
+                let _ = app.run("view.dark", json!({}));
+            }
+            if icon_toggle(&mut right, Icon::Redo, tr("Redo"), has_doc, false).clicked() {
+                let _ = app.run("edit.redo", json!({}));
+            }
+            if icon_toggle(&mut right, Icon::Undo, tr("Undo"), has_doc, false).clicked() {
+                let _ = app.run("edit.undo", json!({}));
+            }
+        }
         if app.ui.ribbon_collapsed {
             return;
         }

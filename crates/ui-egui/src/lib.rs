@@ -291,6 +291,10 @@ pub struct SlideApp {
     pub palette: Option<(String, usize)>,
     /// Integrated title bar (macOS traffic lights over our chrome).
     pub integrated_titlebar: bool,
+    /// No title bar at all (`?chrome=none`, the AX panel): the host page owns the window, saving
+    /// and the title, so quick access, the centred title, search and Present are not drawn. The
+    /// title bar's remaining controls (undo, redo, appearance, comments) move to the tab strip.
+    pub hide_title_bar: bool,
     /// The File tab's full-window view (Backstage). Over a presentation it replaces the ribbon,
     /// slides and status bar until Esc or Back; with nothing open it is the start screen. Opening,
     /// creating or closing a presentation leaves it.
